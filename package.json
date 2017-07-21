@@ -1,0 +1,16 @@
+{
+  "name": "webpack-vertx-js",
+  "version": "1.0.0",
+  "description": "A webpack plugin to bundle an eclipse vertx js application",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Paulo Lopes",
+  "license": "ISC",
+
+  "keywords": [
+    "webpack",
+    "vert.x"
+  ]
+}
