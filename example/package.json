@@ -7,13 +7,16 @@
   "license": "MIT",
 
   "scripts": {
-    "prestart": "/node_modules/.bin/webpack",
+    "prestart": "webpack",
     "start": "java -jar run.jar",
 
     "watch": "npm run start -- --redeploy=\"src/**\" --on-redeploy=\"npm run watch\""
   },
 
   "dependencies": {
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2",
+    "react-router": "^3.0.2"
   },
 
   "devDependencies": {

@@ -1,0 +1,9 @@
+# runtime
+.vertx
+node_modules
+# build
+dist
+target
+.pom.xml
+# application package
+run.jar
