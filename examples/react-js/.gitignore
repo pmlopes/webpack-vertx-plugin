@@ -2,7 +2,8 @@
 .vertx
 node_modules
 # build
-dist
+bundle.js
+bundle.js.map
 target
 .pom.xml
 # application package

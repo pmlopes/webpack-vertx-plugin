@@ -1,0 +1,45 @@
+{
+  "name": "webpack-vertx-example",
+  "version": "1.0.0",
+  "description": "",
+
+  "author": "Paulo Lopes",
+  "license": "MIT",
+
+  "scripts": {
+    "prestart": "webpack",
+    "start": "java -jar run.jar",
+
+    "watch": "npm run start -- --redeploy=\"src/**\" --on-redeploy=\"npm run watch\""
+  },
+
+  "dependencies": {
+    "@angular/compiler": "^4.3.1",
+    "@angular/core": "^4.3.1",
+    "@angular/common": "^4.3.1",
+    "@angular/platform-browser": "^4.3.1",
+    "@angular/platform-browser-dynamic":"^4.3.1",
+    "rxjs": "^5.4.1",
+
+    "es6-shim":"^0.35.3",
+    "zone.js": "^0.8.0",
+    "core-js":"^2.4.1",
+    "reflect-metadata":"^0.1.10"
+  },
+
+  "devDependencies": {
+    "webpack": "^2.2.1",
+
+    "typescript": "^2.4.2",
+    "ts-loader": "^2.3.1",
+    "tslint": "^4.5.1",
+    "tslint-loader": "^3.4.3",
+
+    "html-webpack-plugin":"^2.29.0",
+    "html-loader":"^0.4.5",
+    "extract-text-webpack-plugin":"^3.0.0",
+    "resolve-url-loader":"^2.1.0",
+    "url-loader":"^0.5.9",
+    "file-loader":"^0.11.2"
+  }
+}

@@ -1,5 +1,4 @@
 .vertx
-dist
 node_modules
 .pom.xml
 run.jar
