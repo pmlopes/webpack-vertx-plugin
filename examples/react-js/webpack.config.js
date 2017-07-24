@@ -1,6 +1,6 @@
 // webpack.config.js
 var path = require('path');
-var VertxPlugin = require('../plugin');
+var VertxPlugin = require('../../plugin');
 
 var backend = {
 
