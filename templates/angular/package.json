@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "test": "karma start ClientApp/test/karma.conf.js"
+    "test": "karma start src/test/ts/karma.conf.js"
   },
   "dependencies": {
     "@angular/animations": "4.2.5",
