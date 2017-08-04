@@ -40,6 +40,7 @@
     "url-loader": "0.5.9",
     "webpack": "2.5.1",
     "webpack-hot-middleware": "2.18.2",
-    "webpack-merge": "4.1.0"
+    "webpack-merge": "4.1.0",
+    "webpack-vertx-plugin": "0.0.1"
   }
 }
