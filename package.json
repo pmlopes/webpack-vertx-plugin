@@ -1,5 +1,5 @@
 {
-  "name": "webpack-vertx-js",
+  "name": "webpack-vertx-plugin",
   "version": "1.0.0",
   "description": "A webpack plugin to bundle an eclipse vertx js application",
   "main": "index.js",

@@ -5,7 +5,9 @@ const exec = require('child_process').exec;
 const chalk = require('chalk');
 
 const defaults = {
-  extractOnly: false
+  extractOnly: false,
+  verbose: false,
+  maven: 'mvn'
 };
 
 function VertxPlugin(options) {
@@ -26,8 +28,8 @@ VertxPlugin.prototype.apply = function (compiler) {
   compiler.plugin('before-run', function (compiler, callback) {
 
     // verify if the pom.xml exists
-    fs.stat(path.resolve(process.cwd(), 'pom.xml'), function(err, stat) {
-      if(err) {
+    fs.stat(path.resolve(process.cwd(), 'pom.xml'), function (err, stat) {
+      if (err) {
         if (err.code === 'ENOENT') {
           console.log(chalk.yellow.bold('WARN: pom.xml not found, skipping nashorn modules extraction...'));
           self.config.noPom = true;
@@ -38,8 +40,10 @@ VertxPlugin.prototype.apply = function (compiler) {
       } else {
         // execute mvn dependency:unpack-dependencies
         exec('mvn -f ' + path.resolve(process.cwd(), 'pom.xml') + ' -DoutputDirectory="' + path.resolve(process.cwd(), 'node_modules') + '" dependency:unpack-dependencies', function (error, stdout, stderr) {
-          if (stdout) console.log(stdout);
-          if (stderr) console.error(stderr);
+          if (self.config.verbose) {
+            if (stdout) console.log(stdout);
+            if (stderr) console.error(stderr);
+          }
           callback(error);
         });
       }
@@ -58,8 +62,10 @@ VertxPlugin.prototype.apply = function (compiler) {
         } else {
           // execute mvn package
           exec('mvn -f ' + path.resolve(process.cwd(), 'pom.xml') + ' package', function (error, stdout, stderr) {
-            if (stdout) console.log(stdout);
-            if (stderr) console.error(stderr);
+            if (self.config.verbose) {
+              if (stdout) console.log(stdout);
+              if (stderr) console.error(stderr);
+            }
             callback(error);
           });
         }
