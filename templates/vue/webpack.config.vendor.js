@@ -26,8 +26,8 @@ module.exports = (env) => {
                 { test: /\.(png|woff|woff2|eot|ttf|svg)(\?|$)/, use: 'url-loader?limit=100000' }
             ]
         },
-        output: { 
-            path: path.join(__dirname, 'wwwroot', 'dist'),
+        output: {
+            path: path.join(__dirname, 'src', 'main', 'resources', 'webroot', 'dist'),
             publicPath: 'dist/',
             filename: '[name].js',
             library: '[name]_[hash]'
@@ -39,7 +39,7 @@ module.exports = (env) => {
                 'process.env.NODE_ENV': isDevBuild ? '"development"' : '"production"'
             }),
             new webpack.DllPlugin({
-                path: path.join(__dirname, 'wwwroot', 'dist', '[name]-manifest.json'),
+                path: path.join(__dirname, 'src', 'main', 'resources', 'webroot', 'dist', '[name]-manifest.json'),
                 name: '[name]_[hash]'
             })
         ].concat(isDevBuild ? [] : [
