@@ -12,5 +12,9 @@
   "keywords": [
     "webpack",
     "vert.x"
-  ]
+  ],
+
+  "dependencies": {
+    "chalk": "^2.0.1"
+  }
 }
