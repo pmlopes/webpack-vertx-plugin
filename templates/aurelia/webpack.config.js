@@ -1,7 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const { AureliaPlugin } = require('aurelia-webpack-plugin');
-const bundleOutputDir = './wwwroot/dist';
+const bundleOutputDir = './src/main/resources/webroot/dist';
 
 module.exports = (env) => {
     const isDevBuild = !(env && env.prod);
@@ -10,7 +10,7 @@ module.exports = (env) => {
         entry: { 'app': 'aurelia-bootstrapper' },
         resolve: {
             extensions: ['.ts', '.js'],
-            modules: ['ClientApp', 'node_modules'],
+            modules: ['src/main/ts', 'node_modules'],
         },
         output: {
             path: path.resolve(bundleOutputDir),
@@ -19,7 +19,7 @@ module.exports = (env) => {
         },
         module: {
             rules: [
-                { test: /\.ts$/i, include: /ClientApp/, use: 'ts-loader?silent=true' },
+                { test: /\.ts$/i, include: /src\/.+\/ts/, use: 'ts-loader?silent=true' },
                 { test: /\.html$/i, use: 'html-loader' },
                 { test: /\.css$/i, use: isDevBuild ? 'css-loader' : 'css-loader?minimize' },
                 { test: /\.(png|jpg|jpeg|gif|svg)$/, use: 'url-loader?limit=25000' }
@@ -29,7 +29,7 @@ module.exports = (env) => {
             new webpack.DefinePlugin({ IS_DEV_BUILD: JSON.stringify(isDevBuild) }),
             new webpack.DllReferencePlugin({
                 context: __dirname,
-                manifest: require('./wwwroot/dist/vendor-manifest.json')
+                manifest: require('./src/main/resources/webroot/dist/vendor-manifest.json')
             }),
             new AureliaPlugin({ aureliaApp: 'boot' })
         ].concat(isDevBuild ? [
