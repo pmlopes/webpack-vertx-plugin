@@ -11,7 +11,6 @@
     "@types/knockout": "^3.4.41",
     "@types/signals": "0.0.16",
     "@types/webpack-env": "^1.13.0",
-    "aspnet-webpack": "^2.0.1",
     "awesome-typescript-loader": "^3.0.0",
     "bootstrap": "^3.3.6",
     "bundle-loader": "^0.5.4",

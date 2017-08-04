@@ -15,7 +15,6 @@
   },
   "devDependencies": {
     "@types/webpack-env": "^1.13.0",
-    "aspnet-webpack": "^2.0.1",
     "aurelia-webpack-plugin": "^2.0.0-rc.2",
     "css-loader": "^0.28.0",
     "extract-text-webpack-plugin": "^2.1.0",
