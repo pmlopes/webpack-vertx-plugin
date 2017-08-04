@@ -47,7 +47,7 @@ module.exports = (env) => {
     };
 
     const clientBundleConfig = merge(sharedConfig, {
-        output: { path: path.join(__dirname, 'wwwroot', 'dist') },
+        output: { path: path.join(__dirname, 'src/main/resources/webroot', 'dist') },
         module: {
             rules: [
                 { test: /\.css(\?|$)/, use: extractCSS.extract({ use: isDevBuild ? 'css-loader' : 'css-loader?minimize' }) }
@@ -56,7 +56,7 @@ module.exports = (env) => {
         plugins: [
             extractCSS,
             new webpack.DllPlugin({
-                path: path.join(__dirname, 'wwwroot', 'dist', '[name]-manifest.json'),
+                path: path.join(__dirname, 'src/main/resources/webroot', 'dist', '[name]-manifest.json'),
                 name: '[name]_[hash]'
             })
         ].concat(isDevBuild ? [] : [
@@ -68,7 +68,7 @@ module.exports = (env) => {
         target: 'node',
         resolve: { mainFields: ['main'] },
         output: {
-            path: path.join(__dirname, 'ClientApp', 'dist'),
+            path: path.join(__dirname, 'src/main/ts', 'dist'),
             libraryTarget: 'commonjs2',
         },
         module: {
@@ -77,7 +77,7 @@ module.exports = (env) => {
         entry: { vendor: ['aspnet-prerendering', 'react-dom/server'] },
         plugins: [
             new webpack.DllPlugin({
-                path: path.join(__dirname, 'ClientApp', 'dist', '[name]-manifest.json'),
+                path: path.join(__dirname, 'src', 'main', 'ts', 'dist', '[name]-manifest.json'),
                 name: '[name]_[hash]'
             })
         ]
