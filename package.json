@@ -12,6 +12,11 @@
     "vert.x"
   ],
 
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pmlopes/webpack-vertx-plugin.git"
+  },
+
   "dependencies": {
     "chalk": "^2.0.1"
   }
