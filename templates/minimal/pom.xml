@@ -18,6 +18,11 @@
       <artifactId>vertx-web</artifactId>
       <version>3.4.2</version>
     </dependency>
+    <dependency>
+      <groupId>xyz.jetdrone</groupId>
+      <artifactId>hot-reload</artifactId>
+      <version>0.0.1</version>
+    </dependency>
   </dependencies>
 
   <build>

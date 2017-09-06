@@ -7,7 +7,9 @@ const chalk = require('chalk');
 const defaults = {
   extractOnly: false,
   verbose: false,
-  maven: 'mvn'
+  maven: 'mvn',
+  redeploy: 'src/main/**/*',
+  fatJar: null
 };
 
 function VertxPlugin(options) {
@@ -24,6 +26,8 @@ function VertxPlugin(options) {
 
 VertxPlugin.prototype.apply = function (compiler) {
   let self = this;
+  // always assume first run
+  self.needsPackage = true;
 
   compiler.plugin('before-run', function (compiler, callback) {
 
@@ -39,7 +43,7 @@ VertxPlugin.prototype.apply = function (compiler) {
         }
       } else {
         // execute mvn dependency:unpack-dependencies
-        exec('mvn -f ' + path.resolve(process.cwd(), 'pom.xml') + ' -DoutputDirectory="' + path.resolve(process.cwd(), 'node_modules') + '" dependency:unpack-dependencies', function (error, stdout, stderr) {
+        exec(self.config.maven + ' -f ' + path.resolve(process.cwd(), 'pom.xml') + ' -DoutputDirectory="' + path.resolve(process.cwd(), 'node_modules') + '" dependency:unpack-dependencies', function (error, stdout, stderr) {
           if (self.config.verbose) {
             if (stdout) console.log(stdout);
             if (stderr) console.error(stderr);
@@ -49,6 +53,12 @@ VertxPlugin.prototype.apply = function (compiler) {
       }
     });
   });
+
+  compiler.plugin('watch-run', function (watching, callback) {
+    self.isWebpackWatching = true;
+    callback();
+  });
+
 
   if (!self.config.extractOnly) {
     compiler.plugin('after-emit', function (compilation, callback) {
@@ -61,13 +71,38 @@ VertxPlugin.prototype.apply = function (compiler) {
           callback();
         } else {
           // execute mvn package
-          exec('mvn -f ' + path.resolve(process.cwd(), 'pom.xml') + ' package', function (error, stdout, stderr) {
-            if (self.config.verbose) {
-              if (stdout) console.log(stdout);
-              if (stderr) console.error(stderr);
-            }
-            callback(error);
-          });
+          if (self.needsPackage) {
+            exec(self.config.maven + ' -f ' + path.resolve(process.cwd(), 'pom.xml') + ' package', function (error, stdout, stderr) {
+              if (self.config.verbose) {
+                if (stdout) console.log(stdout);
+                if (stderr) console.error(stderr);
+              }
+
+              if (error) {
+                callback(error);
+                return;
+              }
+              self.needsPackage = false;
+
+              if (self.isWebpackWatching) {
+                if (self.config.fatJar && self.config.redeploy) {
+                  let watchPattern = path.resolve(process.cwd(), self.config.redeploy);
+                  let fatJar = path.resolve(process.cwd(), self.config.fatJar);
+
+                  callback(error);
+
+                  exec('java -jar ' + fatJar + ' --redeploy="' + watchPattern + '" --on-redeploy="' + self.config.maven + ' -f ' + path.resolve(process.cwd(), 'pom.xml') + ' package"', function (error, stdout, stderr) {
+                    if (self.config.verbose) {
+                      if (stdout) console.log(stdout);
+                      if (stderr) console.error(stderr);
+                    }
+                  });
+                }
+              }
+            });
+          } else {
+            callback();
+          }
         }
       }
     });

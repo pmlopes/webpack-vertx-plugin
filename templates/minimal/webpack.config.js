@@ -1,6 +1,6 @@
 // webpack.config.js
 var path = require('path');
-const VertxPlugin = require('webpack-vertx-plugin');
+const VertxPlugin = require('../..');
 
 module.exports = {
 
@@ -19,5 +19,9 @@ module.exports = {
     ]
   },
 
-  plugins: [ new VertxPlugin() ]
+  plugins: [
+    new VertxPlugin({
+      fatJar: 'target/com.example-1.0.0-fat.jar'
+    })
+  ]
 };
