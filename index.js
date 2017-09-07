@@ -94,6 +94,8 @@ VertxPlugin.prototype.apply = function (compiler) {
 
                   callback();
                 }
+              } else {
+                callback();
               }
             });
           } else {
