@@ -2,12 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const spawn = require('child_process').spawn;
 const chalk = require('chalk');
+const tmp = require('tmp');
 
 const defaults = {
   extractOnly: false,
   verbose: false,
   maven: 'mvn',
-  redeploy: 'src/main/**/*',
+  watchPattern: 'src/main/resources/**/*',
+  redeploy: true,
+  java: 'java',
   fatJar: null
 };
 
@@ -44,7 +47,7 @@ VertxPlugin.prototype.apply = function (compiler) {
         // execute mvn dependency:unpack-dependencies
         exec(
           self.config.maven,
-          ['-f', path.resolve(process.cwd(), 'pom.xml'), '-DoutputDirectory="' + path.resolve(process.cwd(), 'node_modules') + '"', 'dependency:unpack-dependencies'],
+          ['-f', path.resolve(process.cwd(), 'pom.xml'), '-DoutputDirectory=' + path.resolve(process.cwd(), 'node_modules'), 'dependency:unpack-dependencies'],
           self.config,
           callback);
       }
@@ -52,8 +55,25 @@ VertxPlugin.prototype.apply = function (compiler) {
   });
 
   compiler.plugin('watch-run', function (watching, callback) {
-    self.isWebpackWatching = true;
-    callback();
+    if (!self.isWebpackWatching) {
+      self.isWebpackWatching = true;
+      // create a tmp file to communicate to the JVM if needed
+      tmp.file(function (err, path, fd) {
+        if (err) {
+          return callback(err);
+        }
+
+        // save the file description and path
+        self.tmpfile = {
+          fd: fd,
+          path: path
+        };
+        // setup complete
+        callback();
+      });
+    } else {
+      callback();
+    }
   });
 
 
@@ -83,22 +103,39 @@ VertxPlugin.prototype.apply = function (compiler) {
               self.needsPackage = false;
 
               if (self.isWebpackWatching) {
-                if (self.config.fatJar && self.config.redeploy) {
-                  let watchPattern = path.resolve(process.cwd(), self.config.redeploy);
+                if (self.config.fatJar && self.config.watchPattern) {
+                  let watchPattern = path.resolve(process.cwd(), self.config.watchPattern);
                   let fatJar = path.resolve(process.cwd(), self.config.fatJar);
 
-                  exec(
-                    'java',
-                    ['-jar', fatJar, '--redeploy=' + watchPattern, '--on-redeploy=' + self.config.maven + ' -f ' + path.resolve(process.cwd(), 'pom.xml') + ' package'],
-                    self.config);
+                  let args = [];
 
-                  callback();
+                  if (self.tmpfile) {
+                    args.push('-Dwebpack.build.info=' + self.tmpfile.path);
+                  }
+
+                  args.push('-jar', fatJar);
+
+                  if (self.config.redeploy) {
+                    args.push('--redeploy=' + watchPattern, '--on-redeploy=' + self.config.maven + ' -f "' + path.resolve(process.cwd(), 'pom.xml"') + ' package');
+                  }
+
+                  exec(self.config.java, args, self.config);
                 }
-              } else {
-                callback();
               }
+              callback();
             });
           } else {
+            // touch the monitor file
+            if (self.isWebpackWatching) {
+              if (self.tmpfile) {
+                return fs.write(self.tmpfile.fd, Date.now() + ': Warnings? ' + compilation.getStats().hasWarnings(), function (err) {
+                  if (err) {
+                    return callback(err);
+                  }
+                  fs.fsync(self.tmpfile.fd, callback);
+                });
+              }
+            }
             callback();
           }
         }
@@ -110,8 +147,12 @@ VertxPlugin.prototype.apply = function (compiler) {
 function exec(command, args, options, callback) {
 
   const proc = spawn(command, args);
-  console.log('Running: ' + chalk.bold(command) + '...');
-
+  if (args && args.length > 0) {
+    let lastArg = args[args.length - 1];
+    console.log('Running: ' + chalk.bold(command) + ' ... ' + chalk.bold(lastArg));
+  } else {
+    console.log('Running: ' + chalk.bold(command));
+  }
   proc.stdout.on('data', function (data) {
     if (options.verbose) {
       process.stdout.write(data);

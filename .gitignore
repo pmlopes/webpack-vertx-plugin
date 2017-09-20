@@ -4,3 +4,4 @@ node_modules
 run.jar
 target
 .idea
+*.jar

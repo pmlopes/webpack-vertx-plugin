@@ -72,5 +72,7 @@ module.exports = config;
 * `maven`: string with the system maven path. **Default: 'mvn'**
 * `extractOnly`: boolean to only extract resources to `node_modules` (do not execute `mvn package` in the end of the build). **Default: false**
 * `verbose`: boolean to display the maven output. **Default: false**
-* `redeploy`: a ant pattern to pass to vertx when watching for file changes, **Default: src/main/\*\*/\***
+* `watchPattern`: a ant pattern to pass to vertx when watching for file changes, **Default: src/main/resources/\*\*/\***
+* `redeploy`: boolean instructing to redeploy when the watchPattern is triggered. **Default: true**
+* `java` : string with the system java path. **Default: 'java'**
 * `fatJar`: the location of your runnable jar.
