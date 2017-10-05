@@ -9,7 +9,7 @@ const defaults = {
   verbose: false,
   maven: 'mvn',
   watchPattern: 'src/main/resources/**/*',
-  redeploy: true,
+  redeploy: false,
   java: 'java',
   fatJar: null
 };
@@ -48,6 +48,7 @@ VertxPlugin.prototype.apply = function (compiler) {
         exec(
           self.config.maven,
           ['-f', path.resolve(process.cwd(), 'pom.xml'), '-DoutputDirectory=' + path.resolve(process.cwd(), 'node_modules'), 'dependency:unpack-dependencies'],
+          Object.create(process.env),
           self.config,
           callback);
       }
@@ -92,38 +93,43 @@ VertxPlugin.prototype.apply = function (compiler) {
             exec(
               self.config.maven,
               ['-f', path.resolve(process.cwd(), 'pom.xml'), 'package'],
+              Object.create(process.env),
               self.config,
               function (err) {
 
-              if (err) {
-                callback(err);
-                return;
-              }
-
-              self.needsPackage = false;
-
-              if (self.isWebpackWatching) {
-                if (self.config.fatJar && self.config.watchPattern) {
-                  let watchPattern = path.resolve(process.cwd(), self.config.watchPattern);
-                  let fatJar = path.resolve(process.cwd(), self.config.fatJar);
-
-                  let args = [];
-
-                  if (self.tmpfile) {
-                    args.push('-Dwebpack.build.info=' + self.tmpfile.path);
-                  }
-
-                  args.push('-jar', fatJar);
-
-                  if (self.config.redeploy) {
-                    args.push('--redeploy=' + watchPattern, '--on-redeploy=' + self.config.maven + ' -f "' + path.resolve(process.cwd(), 'pom.xml"') + ' package');
-                  }
-
-                  exec(self.config.java, args, self.config);
+                if (err) {
+                  callback(err);
+                  return;
                 }
-              }
-              callback();
-            });
+
+                self.needsPackage = false;
+
+                if (self.isWebpackWatching) {
+                  if (self.config.fatJar && self.config.watchPattern) {
+                    let watchPattern = path.resolve(process.cwd(), self.config.watchPattern);
+                    let fatJar = path.resolve(process.cwd(), self.config.fatJar);
+
+                    let args = [];
+                    let env = Object.create(process.env);
+
+                    if (self.tmpfile) {
+                      env.VERTX_HOT_RELOAD = self.tmpfile.path;
+                    } else {
+                      // always trigger the hot reload handler
+                      env.VERTX_HOT_RELOAD = '';
+                    }
+
+                    args.push('-jar', fatJar);
+
+                    if (self.config.redeploy) {
+                      args.push('--redeploy=' + watchPattern, '--on-redeploy=' + self.config.maven + ' -f "' + path.resolve(process.cwd(), 'pom.xml"') + ' package');
+                    }
+
+                    exec(self.config.java, args, env, self.config);
+                  }
+                }
+                callback();
+              });
           } else {
             // touch the monitor file
             if (self.isWebpackWatching) {
@@ -144,9 +150,9 @@ VertxPlugin.prototype.apply = function (compiler) {
   }
 };
 
-function exec(command, args, options, callback) {
+function exec(command, args, env, options, callback) {
 
-  const proc = spawn(command, args);
+  const proc = spawn(command, args, {env: env});
   if (args && args.length > 0) {
     let lastArg = args[args.length - 1];
     console.log('Running: ' + chalk.bold(command) + ' ... ' + chalk.bold(lastArg));
@@ -166,7 +172,7 @@ function exec(command, args, options, callback) {
   proc.on('close', function (code) {
     if (callback) {
       if (code) {
-        callback(chalk.yellow.bold('Error: '+ command + " exit code " + code + '.' + (options.verbose ? '' : ' Re-run with verbose enabled for more details.')));
+        callback(chalk.yellow.bold('Error: ' + command + " exit code " + code + '.' + (options.verbose ? '' : ' Re-run with verbose enabled for more details.')));
       } else {
         callback();
       }
