@@ -2,17 +2,39 @@ const fs = require('fs');
 const path = require('path');
 const spawn = require('child_process').spawn;
 const chalk = require('chalk');
-const tmp = require('tmp');
 
 const defaults = {
   extractOnly: false,
   verbose: false,
-  maven: 'mvn',
-  watchPattern: 'src/main/resources/**/*',
-  redeploy: false,
-  java: 'java',
-  fatJar: null
+  watchPattern: null,
+  verticle: null
 };
+
+const dir = process.cwd();
+
+/**
+ * Helper to select local maven wrapper or system maven
+ *
+ * @param dir current working directory
+ * @returns {string} the maven command
+ */
+function getMaven(dir) {
+  var mvn = 'mvn';
+  var isWin = /^win/.test(process.platform);
+
+  // check for wrapper
+  if (isWin) {
+    if (fs.existsSync(path.resolve(dir, 'mvnw.bat'))) {
+      mvn = path.resolve(dir, 'mvnw.bat');
+    }
+  } else {
+    if (fs.existsSync(path.resolve(dir, 'mvnw'))) {
+      mvn = path.resolve(dir, 'mvnw');
+    }
+  }
+
+  return mvn;
+}
 
 function VertxPlugin(options) {
   // Setup the plugin instance with options...
@@ -27,121 +49,101 @@ function VertxPlugin(options) {
 }
 
 VertxPlugin.prototype.apply = function (compiler) {
-  let self = this;
-  // always assume first run
-  self.needsPackage = true;
+  const self = this;
 
   compiler.plugin('before-run', function (compiler, callback) {
-
-    // verify if the pom.xml exists
-    fs.stat(path.resolve(process.cwd(), 'pom.xml'), function (err, stat) {
-      if (err) {
-        if (err.code === 'ENOENT') {
-          console.log(chalk.yellow.bold('WARN: pom.xml not found, skipping nashorn modules extraction...'));
-          self.config.noPom = true;
-          callback();
-        } else {
-          callback(err);
-        }
-      } else {
-        // execute mvn dependency:unpack-dependencies
-        exec(
-          self.config.maven,
-          ['-f', path.resolve(process.cwd(), 'pom.xml'), '-DoutputDirectory=' + path.resolve(process.cwd(), 'node_modules'), 'dependency:unpack-dependencies'],
-          Object.create(process.env),
-          self.config,
-          callback);
-      }
-    });
-  });
-
-  compiler.plugin('watch-run', function (watching, callback) {
-    if (!self.isWebpackWatching) {
-      self.isWebpackWatching = true;
-      // create a tmp file to communicate to the JVM if needed
-      tmp.file(function (err, path, fd) {
-        if (err) {
-          return callback(err);
-        }
-
-        // save the file description and path
-        self.tmpfile = {
-          fd: fd,
-          path: path
-        };
-        // setup complete
-        callback();
-      });
+    if (self.config.extractOnly && fs.existsSync(path.resolve(dir, 'pom.xml'))) {
+      // execute mvn dependency:unpack-dependencies
+      exec(
+        getMaven(dir),
+        [
+          '-f', path.resolve(dir, 'pom.xml'),
+          '-DoutputDirectory=' + dir,
+          '-Dmdep.unpack.includes=node_modules/**/*',
+          'dependency:unpack-dependencies'],
+        Object.create(process.env),
+        self.config,
+        callback);
     } else {
       callback();
     }
   });
 
+  compiler.plugin('watch-run', function (watching, callback) {
+    if (!self.isWebpackWatching) {
+      // create a tmp file to communicate to the JVM if needed
+      self.fd = fs.openSync(path.resolve(dir, '.hot-reload'), 'a');
+
+      var onExit = function () {
+        if (self.fd) {
+          fs.closeSync(self.fd);
+          fs.unlinkSync(path.resolve(dir, '.hot-reload'));
+          delete self.fd;
+        }
+      };
+
+      //do something when app is closing
+      process.on('exit', onExit);
+      //catches ctrl+c event
+      process.on('SIGINT', onExit);
+      // catches "kill pid" (for example: nodemon restart)
+      process.on('SIGUSR1', onExit);
+      process.on('SIGUSR2', onExit);
+      //catches uncaught exceptions
+      process.on('uncaughtException', onExit);
+
+      self.isWebpackWatching = true;
+    }
+
+    callback();
+  });
+
 
   if (!self.config.extractOnly) {
     compiler.plugin('after-emit', function (compilation, callback) {
-      if (compilation.getStats().hasErrors()) {
-        // skip
+      // quick stop execution
+      if (compilation.getStats().hasErrors() || !self.isWebpackWatching || !fs.existsSync(path.resolve(dir, 'pom.xml'))) {
         callback();
       } else {
-        if (self.config.noPom === false) {
-          // skip
-          callback();
-        } else {
-          // execute mvn package
-          if (self.needsPackage) {
-            exec(
-              self.config.maven,
-              ['-f', path.resolve(process.cwd(), 'pom.xml'), 'package'],
-              Object.create(process.env),
-              self.config,
-              function (err) {
-
-                if (err) {
-                  callback(err);
-                  return;
-                }
-
-                self.needsPackage = false;
-
-                if (self.isWebpackWatching) {
-                  if (self.config.fatJar && self.config.watchPattern) {
-                    let watchPattern = path.resolve(process.cwd(), self.config.watchPattern);
-                    let fatJar = path.resolve(process.cwd(), self.config.fatJar);
-
-                    let args = [];
-                    let env = Object.create(process.env);
-
-                    if (self.tmpfile) {
-                      env.VERTX_HOT_RELOAD = self.tmpfile.path;
-                    } else {
-                      // always trigger the hot reload handler
-                      env.VERTX_HOT_RELOAD = '';
-                    }
-
-                    args.push('-jar', fatJar);
-
-                    if (self.config.redeploy) {
-                      args.push('--redeploy=' + watchPattern, '--on-redeploy=' + self.config.maven + ' -f "' + path.resolve(process.cwd(), 'pom.xml"') + ' package');
-                    }
-
-                    exec(self.config.java, args, env, self.config);
-                  }
-                }
-                callback();
-              });
-          } else {
-            // touch the monitor file
-            if (self.isWebpackWatching) {
-              if (self.tmpfile) {
-                return fs.write(self.tmpfile.fd, Date.now() + ': Warnings? ' + compilation.getStats().hasWarnings(), function (err) {
-                  if (err) {
-                    return callback(err);
-                  }
-                  fs.fsync(self.tmpfile.fd, callback);
-                });
+        // verify if the JVM is already running
+        if (!self.jvmPid) {
+          // there is no JVM we are aware, so we need a bit of house keeping:
+          // we start the JVM
+          self.jvmPid = exec(
+            getMaven(dir),
+            [
+              '-f', path.resolve(dir, 'pom.xml'),
+              'compile',
+              'exec:java',
+              '-Dexec.mainClass=io.vertx.core.Launcher',
+              '-Dexec.args=run ' + self.config.verticle + (self.config.watchPattern ? ' --redeploy=' + path.resolve(dir, self.config.watchPattern) : '')
+            ],
+            Object.create(process.env),
+            self.config,
+            function (err) {
+              // clear the pid information
+              delete self.jvmPid;
+              // if the process error'ed or exited
+              if (err) {
+                callback(err);
               }
-            }
+            });
+
+          if (!self.jvmPid) {
+            callback('Failed to start maven');
+          } else {
+            callback();
+          }
+        } else {
+          if (self.fd) {
+            fs.write(self.fd, Date.now() + ': Warnings? ' + compilation.getStats().hasWarnings() + '\n', function (err) {
+              if (err) {
+                callback(err);
+              } else {
+                fs.fsync(self.fd, callback);
+              }
+            });
+          } else {
             callback();
           }
         }
@@ -153,9 +155,9 @@ VertxPlugin.prototype.apply = function (compiler) {
 function exec(command, args, env, options, callback) {
 
   const proc = spawn(command, args, {env: env});
+
   if (args && args.length > 0) {
-    let lastArg = args[args.length - 1];
-    console.log('Running: ' + chalk.bold(command) + ' ... ' + chalk.bold(lastArg));
+    console.log('Running: ' + chalk.bold(command) + ' ... ' + chalk.bold(args[args.length - 1]));
   } else {
     console.log('Running: ' + chalk.bold(command));
   }
@@ -184,6 +186,8 @@ function exec(command, args, env, options, callback) {
       callback(chalk.red.bold(err));
     }
   });
+
+  return proc;
 }
 
 module.exports = VertxPlugin;
